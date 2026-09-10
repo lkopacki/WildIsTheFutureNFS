@@ -12,6 +12,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.css" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.js"></script>
+<script src="https://unpkg.com/pmtiles@3.0.6/dist/pmtiles.js"></script>
 
 <style>
 /* ---------------------------------------------------------------------------
@@ -696,17 +697,17 @@ const GROUPS = [
   {
     id: "salmon", name: "Salmon", sub: "Chinook, coho and chum",
     layers: [
-      { id: "spring_chinook", name: "Spring Chinook", note: "", width: 2.6, dash: [8, 2, 1.5, 2], on: true, url: "./data/spring_chinook.geojson" },
-      { id: "fall_chinook",   name: "Fall Chinook",   note: "", width: 2.6, dash: [1.5, 1.8],     on: true, url: "./data/fall_chinook.geojson" },
-      { id: "coho",           name: "Coho",           note: "", width: 2.6, dash: [3, 1.5],       on: true, url: "./data/coho.geojson" },
-      { id: "chum",           name: "Chum",           note: "", width: 2.6, dash: [10, 2.5],      on: true, url: "./data/chum.geojson" },
+      { id: "spring_chinook", name: "Spring Chinook", width: 2.6, dash: [8, 2, 1.5, 2], on: true, pmtiles: "./data/spring_chinook.pmtiles", sourceLayer: "spring_chinook", bounds: [-124.5, 42.0, -116.5, 46.3] },
+      { id: "fall_chinook",   name: "Fall Chinook",   width: 2.6, dash: [1.5, 1.8],     on: true, pmtiles: "./data/fall_chinook.pmtiles",   sourceLayer: "fall_chinook",   bounds: [-124.5, 42.0, -116.5, 46.3] },
+      { id: "coho",           name: "Coho",           width: 2.6, dash: [3, 1.5],       on: true, pmtiles: "./data/coho.pmtiles",           sourceLayer: "coho",           bounds: [-124.5, 42.0, -116.5, 46.3] },
+      { id: "chum",           name: "Chum",           width: 2.6, dash: [10, 2.5],      on: true, url: "./data/chum.geojson" },
     ]
   },
   {
     id: "trout", name: "Steelhead", sub: "Winter and summer run",
     layers: [
-      { id: "winter_steelhead", name: "Winter Steelhead", note: "", width: 2.6,                on: true, url: "./data/winter_steelhead.geojson" },
-      { id: "summer_steelhead", name: "Summer Steelhead", note: "", width: 2.6, dash: [5, 2],  on: true, url: "./data/summer_steelhead.geojson" },
+      { id: "winter_steelhead", name: "Winter Steelhead", width: 2.6,               on: true, pmtiles: "./data/winter_steelhead.pmtiles", sourceLayer: "winter_steelhead", bounds: [-124.5, 42.0, -116.5, 46.3] },
+      { id: "summer_steelhead", name: "Summer Steelhead", width: 2.6, dash: [5, 2], on: true, pmtiles: "./data/summer_steelhead.pmtiles", sourceLayer: "summer_steelhead", bounds: [-124.5, 42.0, -116.5, 46.3] },
     ]
   },
 ];
@@ -746,6 +747,10 @@ const start = readHash();
 let base = start.base || 'light';
 let hovered = null;
 let ready = false;
+
+// Lets MapLibre read .pmtiles over HTTP range requests, so a big layer
+// only ever downloads the tiles actually on screen.
+if (window.pmtiles) maplibregl.addProtocol('pmtiles', new pmtiles.Protocol().tile);
 
 const map = new maplibregl.Map({
   container: 'map',
@@ -1147,19 +1152,7 @@ function bbox(g) {
 }
 
 /* ===========================================================================
-   8.  PMTILES  —  uncomment for layers too big to ship as GeoJSON
-
-   In <head>, above maplibre-gl:
-     <script src="https://unpkg.com/pmtiles@3.0.6/dist/pmtiles.js"><\/script>
-
-   Then, above `new maplibregl.Map`:
-     maplibregl.addProtocol('pmtiles', new pmtiles.Protocol().tile);
-
-   Give every PMTiles layer an explicit `bounds` so "Zoom to visible" works.
-   =========================================================================== */
-
-/* ===========================================================================
-   9.  DEMO GEOMETRY  —  delete once the real data is wired up
+   8.  DEMO GEOMETRY  —  delete once the real data is wired up
    =========================================================================== */
 
 function demo(seed, count) {
