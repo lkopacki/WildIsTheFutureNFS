@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Oregon Rivers By Hatchery Influence — Native Fish Society</title>
+<meta name="description" content="Oregon's rivers mapped by hatchery influence, with habitat, barriers, restoration and stewardship data.">
+<meta name="theme-color" content="#ffffff">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.css" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.js"></script>
+
+<style>
+/* ---------------------------------------------------------------------------
+   Tokens. Everything visual lives here — swap in the real brand values from
+   the NFS style guide and the rest of the page follows.
+
+   The reasoning behind the current values: the main site is white-surfaced
+   with photography carrying the colour, deep green used as ink rather than
+   as a background, and a warm rust reserved for anything that asks the
+   reader to act. That's the structure this page follows.
+   --------------------------------------------------------------------------- */
+:root {
+  --paper:    #ffffff;
+  --paper-2:  #f4f6f3;   /* faintly green-grey, for recessed strips */
+  --line:     #e1e5e0;
+  --line-2:   #cdd4cb;
+
+  --forest:   #14352a;   /* primary text and the header wordmark */
+  --forest-2: #2f5d4a;
+  --moss:     #6b7d72;   /* secondary text */
+
+  --current:  #0f7d8c;   /* interactive: links, focus, selection */
+  --action:   #b8442a;   /* donate and other calls to act */
+
+  --shadow:   0 2px 4px rgba(20,53,42,.04), 0 12px 32px rgba(20,53,42,.10);
+  --head:     64px;
+  --panel-w:  336px;
+  --strip:    62px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--paper);
+  color: var(--forest);
+  font-family: Barlow, system-ui, -apple-system, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.cond {
+  font-family: "Barlow Condensed", "Barlow Semi Condensed", system-ui, sans-serif;
+  letter-spacing: .005em;
+}
+
+:focus-visible { outline: 2px solid var(--current); outline-offset: 2px; }
+
+/* ---------- masthead ---------- */
+
+#head {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: var(--head);
+  z-index: 5;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 0 20px;
+}
+
+#head .brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: inherit;
+  min-width: 0;
+}
+
+/* Drop the real nfs-logo.svg in beside this file and point the src at it.
+   The inline circle below is a stand-in so the layout doesn't collapse. */
+#head .brand img,
+#head .brand .placeholder {
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border-radius: 50%;
+}
+
+#head .brand .placeholder {
+  border: 1.5px solid var(--forest);
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+}
+
+#head .title {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.02;
+  max-width: 26ch;
+}
+
+#head .org {
+  display: block;
+  font-family: Barlow, sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .02em;
+  color: var(--moss);
+}
+
+#head nav {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+
+#head nav a {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--forest);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+#head nav a:hover { color: var(--current); }
+
+/* ---------- map ---------- */
+
+#map { position: absolute; inset: var(--head) 0 0 0; }
+
+.maplibregl-ctrl-group { box-shadow: var(--shadow) !important; border-radius: 3px !important; }
+
+/* ---------- floating panel ---------- */
+
+#panel {
+  position: absolute;
+  top: calc(var(--head) + 18px);
+  left: 18px;
+  width: var(--panel-w);
+  max-height: calc(100% - var(--head) - var(--strip) - 48px);
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+#panel .top { padding: 15px 17px 13px; }
+
+#panel h2 {
+  margin: 0 0 3px;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+#panel .lede {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--moss);
+}
+
+#find {
+  width: 100%;
+  font: inherit;
+  font-size: 14px;
+  padding: 9px 11px;
+  color: var(--forest);
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+}
+
+#find::placeholder { color: #9aa89f; }
+#find:focus { outline: none; border-color: var(--current); background: var(--paper); }
+
+#scroll {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-top: 1px solid var(--line);
+}
+
+/* groups */
+
+.grp { border-bottom: 1px solid var(--line); }
+.grp[hidden] { display: none; }
+
+.grp-btn {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  width: 100%;
+  padding: 11px 17px;
+  background: none;
+  border: 0;
+  font: inherit;
+  text-align: left;
+  color: var(--forest);
+  cursor: pointer;
+}
+
+.grp-btn:hover { background: var(--paper-2); }
+
+.grp-btn .caret {
+  align-self: center;
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-right: 1.8px solid var(--moss);
+  border-bottom: 1.8px solid var(--moss);
+  transform: rotate(45deg);
+  transition: transform .16s ease;
+}
+
+.grp[data-open="false"] .caret { transform: rotate(-45deg); }
+.grp[data-open="false"] .grp-body { display: none; }
+
+.grp-btn .label {
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 16.5px;
+  font-weight: 600;
+  line-height: 1.15;
+}
+
+.grp-btn .sub {
+  font-size: 11.5px;
+  color: var(--moss);
+  line-height: 1.15;
+}
+
+.grp-btn .count {
+  margin-left: auto;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--moss);
+  font-variant-numeric: tabular-nums;
+  align-self: center;
+}
+
+.grp-body { padding-bottom: 7px; }
+
+.grp-acts {
+  display: flex;
+  gap: 13px;
+  padding: 0 17px 7px 33px;
+}
+
+.mini {
+  padding: 0;
+  background: none;
+  border: 0;
+  font: inherit;
+  font-size: 12px;
+  color: var(--current);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.mini:hover { color: var(--action); }
+
+/* layer rows */
+
+.row {
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  gap: 10px;
+  align-items: start;
+  width: 100%;
+  padding: 7px 17px;
+  background: none;
+  border: 0;
+  border-left: 3px solid transparent;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.row:hover { background: var(--paper-2); }
+.row[aria-pressed="true"] { border-left-color: var(--forest-2); }
+.row[aria-pressed="false"] .sw { opacity: .28; }
+.row[aria-pressed="false"] .nm { color: var(--moss); font-weight: 400; }
+.row[hidden] { display: none; }
+
+.sw { margin-top: 5px; overflow: visible; }
+
+.nm { display: block; font-size: 13.5px; font-weight: 500; line-height: 1.3; }
+.nt { display: block; margin-top: 1px; font-size: 11.5px; line-height: 1.35; color: var(--moss); }
+
+#none { padding: 22px 17px; font-size: 13px; color: var(--moss); }
+
+#panel .btm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 17px 11px;
+  border-top: 1px solid var(--line);
+  background: var(--paper-2);
+}
+
+.b {
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 7px 13px;
+  border-radius: 2px;
+  border: 1px solid var(--forest);
+  background: var(--forest);
+  color: #fff;
+  cursor: pointer;
+}
+
+.b:hover { background: var(--forest-2); border-color: var(--forest-2); }
+.b.q { background: none; color: var(--forest); border-color: var(--line-2); }
+.b.q:hover { background: var(--paper); border-color: var(--moss); }
+
+#tally { margin-left: auto; font-size: 11.5px; color: var(--moss); font-variant-numeric: tabular-nums; }
+
+/* ---------- basemap switch ---------- */
+
+#bases {
+  position: absolute;
+  top: calc(var(--head) + 18px);
+  right: 60px;
+  z-index: 4;
+  display: flex;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+#bases button {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 11px;
+  border: 0;
+  border-right: 1px solid var(--line);
+  background: none;
+  color: var(--moss);
+  cursor: pointer;
+}
+
+#bases button:last-child { border-right: 0; }
+#bases button:hover { background: var(--paper-2); }
+#bases button[aria-pressed="true"] { background: var(--forest); color: #fff; }
+
+/* ---------- homewaters strip ---------- */
+
+#strip {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: var(--strip);
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 18px;
+  background: var(--paper);
+  border-top: 1px solid var(--line);
+}
+
+#strip .cue {
+  flex: none;
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--forest);
+  padding-right: 14px;
+  border-right: 1px solid var(--line);
+}
+
+#strip .cue span {
+  display: block;
+  font-family: Barlow, sans-serif;
+  font-size: 10.5px;
+  font-weight: 400;
+  color: var(--moss);
+}
+
+#rivers {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 3px 0;
+}
+
+#rivers::-webkit-scrollbar { display: none; }
+
+.river {
+  flex: none;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line-2);
+  background: var(--paper);
+  color: var(--forest);
+  cursor: pointer;
+}
+
+.river:hover { border-color: var(--forest-2); background: var(--paper-2); }
+.river[aria-current="true"] { background: var(--forest); border-color: var(--forest); color: #fff; }
+
+#panel-rivers { display: none; }
+
+/* ---------- popup ---------- */
+
+.maplibregl-popup-content {
+  font-family: inherit;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--paper);
+  color: var(--forest);
+  box-shadow: var(--shadow);
+}
+
+.maplibregl-popup-tip { border-top-color: var(--paper) !important; border-bottom-color: var(--paper) !important; }
+.maplibregl-popup-close-button { color: #fff; font-size: 18px; padding: 2px 8px; right: 2px; top: 1px; }
+
+.ph {
+  padding: 10px 14px 9px;
+  color: #fff;
+  padding-right: 32px;
+}
+
+.ph b {
+  font-family: "Barlow Condensed", sans-serif;
+  display: block;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.15;
+}
+
+.ph i {
+  display: block;
+  font-style: normal;
+  font-size: 11px;
+  opacity: .85;
+  margin-top: 1px;
+}
+
+.pb { padding: 11px 14px 13px; }
+
+.pr {
+  margin: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 2px 12px;
+  font-size: 12.5px;
+}
+
+.pr dt { color: var(--moss); }
+.pr dd { margin: 0; font-weight: 500; word-break: break-word; }
+
+/* ---------- mobile ---------- */
+
+#grab { display: none; }
+
+@media (max-width: 860px) {
+  :root { --head: 60px; --strip: 0px; }
+
+  #head .org { display: none; }
+  #head nav { display: none; }
+  #head .title { font-size: 16px; max-width: none; }
+
+  #bases { top: calc(var(--head) + 12px); right: 12px; }
+
+  #strip { display: none; }
+  #panel-rivers { display: block; }
+
+  #panel {
+    top: auto;
+    inset: auto 0 0 0;
+    width: 100%;
+    max-height: 68vh;
+    border: 0;
+    border-top: 1px solid var(--line);
+    border-radius: 12px 12px 0 0;
+    transition: transform .22s ease;
+  }
+
+  #panel[data-open="false"] { transform: translateY(calc(100% - 54px)); }
+
+  #grab {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    padding: 16px 17px;
+    background: none;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    font-family: "Barlow Condensed", sans-serif;
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--forest);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  #panel .lede { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #panel, .caret { transition: none; }
+}
+</style>
+</head>
+
+<body>
+
+<header id="head">
+  <a class="brand" href="https://nativefishsociety.org">
+    <!-- Replace with: <img src="nfs-logo.svg" alt="Native Fish Society"> -->
+    <span class="placeholder cond" aria-hidden="true">NFS</span>
+    <span class="title cond">Oregon Rivers By Hatchery Influence<span class="org">Native Fish Society</span></span>
+  </a>
+  <nav>
+    <a href="https://nativefishsociety.org/learn/native-fish-rivers">Native Fish Rivers</a>
+    <a href="https://nativefishsociety.org/get-involved/volunteer/river-steward-program">River Stewards</a>
+  </nav>
+</header>
+
+<div id="map"></div>
+
+<aside id="panel" data-open="false">
+  <button id="grab" aria-expanded="false" aria-controls="panel"><span id="grab-text">Layers</span></button>
+
+  <div class="top">
+    <h2 class="cond">What's in these rivers</h2>
+    <p class="lede">Twenty-two datasets covering Oregon. Turn layers on, then click any reach to read its record.</p>
+    <input id="find" type="search" placeholder="Find a layer or a river" aria-label="Find a layer or a river">
+  </div>
+
+  <div id="scroll">
+    <div id="panel-rivers"></div>
+    <div id="groups"></div>
+    <div id="none" hidden>Nothing matches that search.</div>
+  </div>
+
+  <div class="btm">
+    <button class="b" id="fit">Zoom to visible</button>
+    <button class="b q" id="clear">Clear</button>
+    <span id="tally"></span>
+  </div>
+</aside>
+
+<div id="bases" role="group" aria-label="Base map"></div>
+
+<nav id="strip" aria-label="Homewaters">
+  <div class="cue">Homewaters<span>Jump to a river</span></div>
+  <div id="rivers"></div>
+</nav>
+
+<script>
+/* ===========================================================================
+   1.  PLACES
+   =========================================================================== */
+
+const OREGON = [-124.62, 41.92, -116.42, 46.30];
+
+/* Rough centres, good enough to fly to. Tighten them against your own
+   watershed boundaries when you have them — or better, derive each one
+   from the bbox of that river's reaches. */
+const RIVERS = [
+  { id: 'nehalem',    name: 'Nehalem',      center: [-123.75, 45.72], zoom: 9.4 },
+  { id: 'wilson',     name: 'Wilson',       center: [-123.60, 45.50], zoom: 9.8 },
+  { id: 'nestucca',   name: 'Nestucca',     center: [-123.80, 45.20], zoom: 9.8 },
+  { id: 'siletz',     name: 'Siletz',       center: [-123.85, 44.72], zoom: 9.6 },
+  { id: 'alsea',      name: 'Alsea',        center: [-123.75, 44.40], zoom: 9.6 },
+  { id: 'siuslaw',    name: 'Siuslaw',      center: [-123.85, 44.02], zoom: 9.3 },
+  { id: 'sandy',      name: 'Sandy',        center: [-122.15, 45.42], zoom: 9.8 },
+  { id: 'clackamas',  name: 'Clackamas',    center: [-122.20, 45.20], zoom: 9.4 },
+  { id: 'molalla',    name: 'Molalla',      center: [-122.55, 45.05], zoom: 9.8 },
+  { id: 'mckenzie',   name: 'McKenzie',     center: [-122.35, 44.15], zoom: 9.4 },
+  { id: 'numpqua',    name: 'North Umpqua', center: [-122.75, 43.30], zoom: 9.2 },
+  { id: 'rogue',      name: 'Rogue',        center: [-123.40, 42.55], zoom: 8.8 },
+  { id: 'illinois',   name: 'Illinois',     center: [-123.70, 42.25], zoom: 9.4 },
+  { id: 'chetco',     name: 'Chetco',       center: [-124.10, 42.15], zoom: 9.8 },
+  { id: 'deschutes',  name: 'Deschutes',    center: [-121.00, 44.95], zoom: 8.4 },
+  { id: 'johnday',    name: 'John Day',     center: [-119.90, 44.85], zoom: 8.2 },
+  { id: 'granderonde',name: 'Grande Ronde', center: [-117.75, 45.55], zoom: 8.6 }
+];
+
+const BASES = [
+  { id: 'light',   label: 'Light',   style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json' },
+  { id: 'topo',    label: 'Topo',    style: raster('https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}', 'USGS The National Map') },
+  { id: 'imagery', label: 'Imagery', style: raster('https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer/tile/{z}/{y}/{x}', 'USGS The National Map') }
+];
+
+/* ===========================================================================
+   2.  THE 22 LAYERS
+   ---------------------------------------------------------------------------
+   Group headings carry the organisation's voice; the subtitle underneath
+   carries the plain description a partner agency needs. Colour is assigned
+   by family, so the hue tells you the theme and the shade or dash tells you
+   the layer — 22 unrelated colours would be unreadable.
+
+   Per layer:  url './data/x.geojson'  |  pmtiles + sourceLayer + bounds
+               color, width, dash, on, label, fields
+   =========================================================================== */
+
+const GROUPS = [
+  {
+    id: 'fish', name: 'Where the fish are', sub: 'Distribution and life stage',
+    layers: [
+      { id: 'steelhead_w', name: 'Winter steelhead spawning', note: 'ODFW distribution, 2023', color: '#0f4d3a', width: 2.6, on: true },
+      { id: 'chinook_s',   name: 'Spring Chinook holding',    note: 'Surveyed pools and runs',  color: '#1c6b4f', width: 2.4, on: true },
+      { id: 'coho',        name: 'Coho rearing',              note: 'Juvenile use, all years',  color: '#2f8a68', width: 2.2, on: true },
+      { id: 'lamprey',     name: 'Pacific lamprey',           note: 'Observed and inferred',    color: '#4da585', width: 2.0, dash: [4, 1.6] },
+      { id: 'cutthroat',   name: 'Coastal cutthroat',         note: 'Resident and sea-run',     color: '#7cbfa5', width: 2.0 }
+    ]
+  },
+  {
+    id: 'block', name: "What's in the way", sub: 'Barriers and passage',
+    layers: [
+      { id: 'culv_full', name: 'Complete passage barriers', note: 'Blocked at every flow',   color: '#8f2f14', width: 2.8 },
+      { id: 'culv_part', name: 'Partial passage barriers',  note: 'Passable at some flows',  color: '#b8442a', width: 2.4, dash: [3, 1.5] },
+      { id: 'dams',      name: 'Dams and diversions',       note: 'Includes push-up dams',   color: '#cf6a3f', width: 2.6 },
+      { id: 'ladders',   name: 'Ladders and screens',       note: 'Condition rated 2024',    color: '#e09a68', width: 2.2 }
+    ]
+  },
+  {
+    id: 'mend', name: "What we're putting back", sub: 'Restoration and protection',
+    layers: [
+      { id: 'wood',       name: 'Large wood placements',   note: 'Completed projects',          color: '#17456e', width: 2.6 },
+      { id: 'riparian',   name: 'Riparian plantings',      note: 'Year 1 through year 10',      color: '#2b6f9e', width: 2.4 },
+      { id: 'floodplain', name: 'Floodplain reconnection', note: 'Levee setbacks and breaches', color: '#4f9cc4', width: 2.6 },
+      { id: 'sidechan',   name: 'Side channels reopened',  note: 'Constructed and restored',    color: '#86c1de', width: 2.2, dash: [4, 1.6] }
+    ]
+  },
+  {
+    id: 'water', name: 'How the water is doing', sub: 'Temperature and quality',
+    layers: [
+      { id: 'temp303d', name: 'Temperature-listed (303d)',  note: 'DEQ integrated report',     color: '#4a3168', width: 2.6 },
+      { id: 'sevenday', name: 'Summer 7DADM over 18 \u00b0C', note: 'Modelled, 2015 to 2024',  color: '#6d4b93', width: 2.4 },
+      { id: 'do',       name: 'Dissolved oxygen concerns',  note: 'Rearing and spawning',      color: '#9074b6', width: 2.2 },
+      { id: 'turb',     name: 'Turbidity monitoring',       note: 'Continuous sondes',         color: '#b39fd2', width: 2.0, dash: [3, 1.5] }
+    ]
+  },
+  {
+    id: 'people', name: 'Who is watching over it', sub: 'Stewardship and access',
+    layers: [
+      { id: 'homewaters', name: 'River Steward homewaters', note: 'Adopted reaches',      color: '#4f3608', width: 3.0 },
+      { id: 'access',     name: 'Public access',           note: 'Bank and boat',        color: '#6b4a12', width: 2.4 },
+      { id: 'creel',      name: 'Angler survey segments',  note: 'Creel census strata',  color: '#8f6c25', width: 2.2 },
+      { id: 'gauges',     name: 'Gauged reaches',          note: 'USGS and OWRD',        color: '#b18f45', width: 2.2 },
+      { id: 'corridors',  name: 'Priority corridors',      note: 'Ranked 2025',          color: '#d0b26f', width: 2.6, dash: [5, 2] }
+    ]
+  }
+];
+
+const LAYERS = GROUPS.flatMap((g, gi) =>
+  g.layers.map((l, li) => Object.assign(l, {
+    group: g.id,
+    data: (l.data || l.url || l.pmtiles) ? l.data : demo(gi * 100 + li, 4 + (li % 3))
+  }))
+);
+
+const byId = Object.fromEntries(LAYERS.map(l => [l.id, l]));
+const visible = new Set(LAYERS.filter(l => l.on).map(l => l.id));
+
+/* ===========================================================================
+   3.  MAP
+   =========================================================================== */
+
+const slow = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const start = readHash();
+let base = start.base || 'light';
+let hovered = null;
+let ready = false;
+
+const map = new maplibregl.Map({
+  container: 'map',
+  style: BASES.find(b => b.id === base).style,
+  bounds: [[OREGON[0], OREGON[1]], [OREGON[2], OREGON[3]]],
+  fitBoundsOptions: { padding: { top: 40, bottom: 80, left: 380, right: 40 } },
+  attributionControl: false
+});
+
+if (start.center) map.jumpTo({ center: start.center, zoom: start.zoom ?? 6.4 });
+if (start.layers) { visible.clear(); start.layers.forEach(id => byId[id] && visible.add(id)); }
+
+map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
+map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+map.addControl(new maplibregl.ScaleControl({ unit: 'imperial' }), 'bottom-left');
+
+map.on('load', () => {
+  LAYERS.forEach(add);
+  LAYERS.forEach(bind);
+  buildPanel();
+  buildBases();
+  buildRivers();
+  ready = true;
+  sync();
+});
+
+/* setStyle throws away our sources; put them back once the new style lands. */
+map.on('styledata', () => {
+  if (!ready || !map.isStyleLoaded() || map.getSource('s-' + LAYERS[0].id)) return;
+  LAYERS.forEach(add);
+  sync();
+});
+
+function add(cfg) {
+  const s = 's-' + cfg.id;
+  if (map.getSource(s)) return;
+
+  if (cfg.pmtiles) map.addSource(s, { type: 'vector', url: 'pmtiles://' + cfg.pmtiles });
+  else map.addSource(s, { type: 'geojson', data: cfg.data || cfg.url, generateId: true });
+
+  const shared = {
+    source: s,
+    ...(cfg.sourceLayer ? { 'source-layer': cfg.sourceLayer } : {}),
+    layout: { 'line-cap': 'round', 'line-join': 'round', visibility: visible.has(cfg.id) ? 'visible' : 'none' }
+  };
+
+  map.addLayer({ ...shared, id: 'h-' + cfg.id, type: 'line',
+    paint: { 'line-width': 18, 'line-opacity': 0, 'line-color': cfg.color } });
+
+  map.addLayer({ ...shared, id: 'l-' + cfg.id, type: 'line',
+    paint: {
+      'line-color': cfg.color,
+      'line-width': ['case', ['boolean', ['feature-state', 'hover'], false], cfg.width + 2.5, cfg.width],
+      ...(cfg.dash ? { 'line-dasharray': cfg.dash } : {})
+    } });
+}
+
+function bind(cfg) {
+  const s = 's-' + cfg.id, h = 'h-' + cfg.id;
+  const sl = cfg.sourceLayer ? { sourceLayer: cfg.sourceLayer } : {};
+
+  map.on('mousemove', h, e => {
+    map.getCanvas().style.cursor = 'pointer';
+    const f = e.features[0];
+    if (!f) return;
+    if (hovered) map.setFeatureState(hovered, { hover: false });
+    hovered = { source: s, id: f.id, ...sl };
+    map.setFeatureState(hovered, { hover: true });
+  });
+
+  map.on('mouseleave', h, () => {
+    map.getCanvas().style.cursor = '';
+    if (hovered) map.setFeatureState(hovered, { hover: false });
+    hovered = null;
+  });
+
+  map.on('click', h, e => {
+    const f = e.features[0];
+    if (!f) return;
+    new maplibregl.Popup({ maxWidth: '300px', offset: 12 })
+      .setLngLat(e.lngLat).setHTML(pop(cfg, f.properties)).addTo(map);
+  });
+}
+
+function pop(cfg, p) {
+  const keys = cfg.fields || Object.keys(p).filter(k => k !== (cfg.label || 'name'));
+  const rows = keys
+    .filter(k => p[k] !== undefined && p[k] !== null && p[k] !== '')
+    .map(k => `<dt>${esc(nice(k))}</dt><dd>${esc(p[k])}</dd>`).join('');
+  return `<div class="ph" style="background:${cfg.color}">
+            <b>${esc(p[cfg.label || 'name'] || cfg.name)}</b><i>${esc(cfg.name)}</i>
+          </div>
+          <div class="pb"><dl class="pr">${rows}</dl></div>`;
+}
+
+/* ===========================================================================
+   4.  PANEL
+   =========================================================================== */
+
+function buildPanel() {
+  const host = document.getElementById('groups');
+
+  GROUPS.forEach(g => {
+    const sec = document.createElement('section');
+    sec.className = 'grp';
+    sec.dataset.grp = g.id;
+    sec.dataset.open = g.layers.some(l => visible.has(l.id)) ? 'true' : 'false';
+
+    const head = document.createElement('button');
+    head.type = 'button';
+    head.className = 'grp-btn';
+    head.innerHTML = `<span class="caret" aria-hidden="true"></span>
+      <span><span class="label">${esc(g.name)}</span><span class="sub">${esc(g.sub)}</span></span>
+      <span class="count"></span>`;
+    head.addEventListener('click', () => {
+      sec.dataset.open = sec.dataset.open === 'true' ? 'false' : 'true';
+    });
+
+    const body = document.createElement('div');
+    body.className = 'grp-body';
+
+    const acts = document.createElement('div');
+    acts.className = 'grp-acts';
+    acts.innerHTML = `<button class="mini" data-a="on">All on</button><button class="mini" data-a="off">All off</button>`;
+    acts.addEventListener('click', e => {
+      const a = e.target.dataset.a;
+      if (!a) return;
+      g.layers.forEach(l => a === 'on' ? visible.add(l.id) : visible.delete(l.id));
+      sync();
+    });
+    body.appendChild(acts);
+
+    g.layers.forEach(cfg => body.appendChild(rowFor(cfg)));
+    sec.append(head, body);
+    host.appendChild(sec);
+  });
+
+  document.getElementById('find').addEventListener('input', e => search(e.target.value));
+  document.getElementById('fit').addEventListener('click', () => zoomVisible(false));
+  document.getElementById('clear').addEventListener('click', () => { visible.clear(); sync(); });
+
+  const panel = document.getElementById('panel');
+  const grab = document.getElementById('grab');
+  grab.addEventListener('click', () => {
+    const open = panel.dataset.open === 'true';
+    panel.dataset.open = String(!open);
+    grab.setAttribute('aria-expanded', String(!open));
+  });
+}
+
+function rowFor(cfg) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'row';
+  b.dataset.id = cfg.id;
+  b.setAttribute('aria-pressed', String(visible.has(cfg.id)));
+
+  const dash = cfg.dash ? cfg.dash.map(n => (n * cfg.width).toFixed(1)).join(' ') : '';
+  b.innerHTML = `
+    <svg class="sw" width="38" height="8" viewBox="0 0 38 8" aria-hidden="true">
+      <line x1="1" y1="4" x2="37" y2="4" stroke="${cfg.color}" stroke-width="${cfg.width}"
+            stroke-linecap="round" ${dash ? `stroke-dasharray="${dash}"` : ''} />
+    </svg>
+    <span><span class="nm">${esc(cfg.name)}</span>${cfg.note ? `<span class="nt">${esc(cfg.note)}</span>` : ''}</span>`;
+
+  b.addEventListener('click', () => {
+    visible.has(cfg.id) ? visible.delete(cfg.id) : visible.add(cfg.id);
+    sync();
+  });
+  return b;
+}
+
+/* One search box over both layers and rivers — people think in river names. */
+function search(term) {
+  const q = term.trim().toLowerCase();
+  let hits = 0;
+
+  document.querySelectorAll('.grp').forEach(sec => {
+    const g = GROUPS.find(x => x.id === sec.dataset.grp);
+    let n = 0;
+    sec.querySelectorAll('.row').forEach(row => {
+      const c = byId[row.dataset.id];
+      const hay = `${c.name} ${c.note || ''} ${g.name} ${g.sub}`.toLowerCase();
+      const ok = !q || hay.includes(q);
+      row.hidden = !ok;
+      if (ok) n++;
+    });
+    sec.hidden = n === 0;
+    if (n) hits++;
+    if (q) sec.dataset.open = 'true';
+  });
+
+  let riverHits = 0;
+  document.querySelectorAll('.river').forEach(chip => {
+    const ok = !q || chip.textContent.toLowerCase().includes(q);
+    if (chip.closest('#panel-rivers')) { chip.hidden = !ok; if (ok) riverHits++; }
+  });
+
+  document.getElementById('none').hidden = hits > 0 || riverHits > 0;
+}
+
+function sync() {
+  LAYERS.forEach(cfg => {
+    const v = visible.has(cfg.id) ? 'visible' : 'none';
+    if (map.getLayer('l-' + cfg.id)) {
+      map.setLayoutProperty('l-' + cfg.id, 'visibility', v);
+      map.setLayoutProperty('h-' + cfg.id, 'visibility', v);
+    }
+    document.querySelectorAll(`.row[data-id="${cfg.id}"]`)
+      .forEach(r => r.setAttribute('aria-pressed', String(visible.has(cfg.id))));
+  });
+
+  GROUPS.forEach(g => {
+    const on = g.layers.filter(l => visible.has(l.id)).length;
+    const el = document.querySelector(`.grp[data-grp="${g.id}"] .count`);
+    if (el) el.textContent = `${on}/${g.layers.length}`;
+  });
+
+  const n = visible.size;
+  document.getElementById('tally').textContent = `${n} of ${LAYERS.length} on`;
+  document.getElementById('grab-text').textContent = n ? `Layers · ${n} on` : 'Layers';
+  writeHash();
+}
+
+/* ===========================================================================
+   5.  HOMEWATERS
+   =========================================================================== */
+
+function buildRivers() {
+  [document.getElementById('rivers'), document.getElementById('panel-rivers')].forEach((host, i) => {
+    if (i === 1) {
+      const wrap = document.createElement('div');
+      wrap.className = 'grp';
+      wrap.innerHTML = `<div class="grp-btn"><span><span class="label">Homewaters</span>
+                        <span class="sub">Jump to a river</span></span></div>`;
+      const pad = document.createElement('div');
+      pad.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;padding:0 17px 13px';
+      RIVERS.forEach(r => pad.appendChild(chip(r)));
+      wrap.appendChild(pad);
+      host.appendChild(wrap);
+    } else {
+      RIVERS.forEach(r => host.appendChild(chip(r)));
+    }
+  });
+}
+
+function chip(r) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'river';
+  b.textContent = r.name;
+  b.dataset.river = r.id;
+  b.addEventListener('click', () => {
+    document.querySelectorAll('.river').forEach(x =>
+      x.setAttribute('aria-current', String(x.dataset.river === r.id)));
+    map.flyTo({ center: r.center, zoom: r.zoom, duration: slow ? 0 : 1400, essential: true });
+    if (innerWidth <= 860) {
+      const p = document.getElementById('panel');
+      p.dataset.open = 'false';
+      document.getElementById('grab').setAttribute('aria-expanded', 'false');
+    }
+  });
+  return b;
+}
+
+/* ===========================================================================
+   6.  BASEMAPS, VIEW, URL
+   =========================================================================== */
+
+function raster(tiles, attribution) {
+  return {
+    version: 8,
+    sources: { b: { type: 'raster', tiles: [tiles], tileSize: 256, maxzoom: 16, attribution } },
+    layers: [{ id: 'b', type: 'raster', source: 'b' }]
+  };
+}
+
+function buildBases() {
+  const host = document.getElementById('bases');
+  BASES.forEach(b => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = b.label;
+    btn.setAttribute('aria-pressed', String(b.id === base));
+    btn.addEventListener('click', () => {
+      if (b.id === base) return;
+      base = b.id;
+      host.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x.textContent === b.label)));
+      map.setStyle(b.style);
+      writeHash();
+    });
+    host.appendChild(btn);
+  });
+}
+
+function zoomVisible(instant) {
+  let box = null;
+  LAYERS.filter(l => visible.has(l.id)).forEach(c => {
+    const b = c.bounds || (c.data ? bbox(c.data) : null);
+    if (!b) return;
+    box = box ? [Math.min(box[0], b[0]), Math.min(box[1], b[1]), Math.max(box[2], b[2]), Math.max(box[3], b[3])] : b.slice();
+  });
+  if (!box) box = OREGON;
+  const wide = innerWidth > 860;
+  map.fitBounds([[box[0], box[1]], [box[2], box[3]]], {
+    padding: { top: 40, bottom: wide ? 80 : 40, left: wide ? 380 : 30, right: 40 },
+    maxZoom: 14,
+    duration: instant || slow ? 0 : 800
+  });
+}
+
+function readHash() {
+  const p = new URLSearchParams(location.hash.slice(1));
+  const c = p.get('c');
+  return {
+    layers: p.has('l') ? p.get('l').split(',').filter(Boolean) : null,
+    center: c ? c.split(',').map(Number) : null,
+    zoom: p.has('z') ? Number(p.get('z')) : null,
+    base: p.get('b')
+  };
+}
+
+let t;
+function writeHash() {
+  clearTimeout(t);
+  t = setTimeout(() => {
+    const c = map.getCenter();
+    const p = new URLSearchParams();
+    if (visible.size) p.set('l', [...visible].join(','));
+    p.set('c', `${c.lng.toFixed(4)},${c.lat.toFixed(4)}`);
+    p.set('z', map.getZoom().toFixed(2));
+    if (base !== 'light') p.set('b', base);
+    history.replaceState(null, '', '#' + p);
+  }, 250);
+}
+
+map.on('moveend', writeHash);
+
+/* ===========================================================================
+   7.  HELPERS
+   =========================================================================== */
+
+const esc = v => String(v).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const nice = k => k.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase());
+
+function bbox(g) {
+  let a = Infinity, b = Infinity, c = -Infinity, d = -Infinity;
+  const walk = co => {
+    if (typeof co[0] === 'number') {
+      a = Math.min(a, co[0]); c = Math.max(c, co[0]);
+      b = Math.min(b, co[1]); d = Math.max(d, co[1]);
+    } else co.forEach(walk);
+  };
+  (g.features || [g]).forEach(f => walk(f.geometry.coordinates));
+  return isFinite(a) ? [a, b, c, d] : null;
+}
+
+/* ===========================================================================
+   8.  PMTILES  —  uncomment for layers too big to ship as GeoJSON
+
+   In <head>, above maplibre-gl:
+     <script src="https://unpkg.com/pmtiles@3.0.6/dist/pmtiles.js"><\/script>
+
+   Then, above `new maplibregl.Map`:
+     maplibregl.addProtocol('pmtiles', new pmtiles.Protocol().tile);
+
+   Give every PMTiles layer an explicit `bounds` so "Zoom to visible" works.
+   =========================================================================== */
+
+/* ===========================================================================
+   9.  DEMO GEOMETRY  —  delete once the real data is wired up
+   =========================================================================== */
+
+function demo(seed, count) {
+  const r = mulberry(seed + 7), out = [];
+  const runs = ['Winter', 'Spring', 'Summer', 'Fall'];
+  const cond = ['good', 'fair', 'degraded', 'unknown'];
+  const names = RIVERS.map(x => x.name);
+
+  for (let i = 0; i < count; i++) {
+    const x0 = OREGON[0] + 0.4 + r() * (OREGON[2] - OREGON[0] - 1.0);
+    const y0 = OREGON[1] + 0.3 + r() * (OREGON[3] - OREGON[1] - 0.8);
+    const co = [[x0, y0]];
+    let hx = (r() - .5) * .16, hy = (r() - .5) * .16;
+
+    for (let j = 0; j < 7 + Math.floor(r() * 5); j++) {
+      hx = hx * .72 + (r() - .5) * .1;
+      hy = hy * .72 + (r() - .5) * .1;
+      const p = co[co.length - 1];
+      co.push([p[0] + hx, p[1] + hy]);
+    }
+
+    out.push({
+      type: 'Feature',
+      properties: {
+        name: `Reach ${String.fromCharCode(65 + seed % 26)}-${100 + i}`,
+        river: names[Math.floor(r() * names.length)],
+        run_timing: runs[Math.floor(r() * 4)],
+        length_mi: (1 + r() * 11).toFixed(1),
+        condition: cond[Math.floor(r() * 4)],
+        surveyed: 2019 + Math.floor(r() * 7)
+      },
+      geometry: { type: 'LineString', coordinates: co }
+    });
+  }
+  return { type: 'FeatureCollection', features: out };
+}
+
+function mulberry(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+</script>
+</body>
+</html>
