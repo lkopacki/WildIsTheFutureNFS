@@ -336,6 +336,55 @@ html, body {
 
 #tally { margin-left: auto; font-size: 11.5px; color: var(--moss); font-variant-numeric: tabular-nums; }
 
+/* ---------- legend ---------- */
+
+#legend { border-bottom: 1px solid var(--line); }
+
+#legend .head {
+  padding: 11px 17px 2px;
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 16.5px;
+  font-weight: 600;
+  line-height: 1.15;
+}
+
+#legend .head span {
+  display: block;
+  font-family: Barlow, sans-serif;
+  font-size: 11.5px;
+  font-weight: 400;
+  color: var(--moss);
+}
+
+#legend .keys { padding: 7px 17px 12px; display: flex; flex-wrap: wrap; gap: 5px; }
+
+.key {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 5px 11px 5px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line-2);
+  background: var(--paper);
+  color: var(--forest);
+  cursor: pointer;
+}
+
+.key:hover { border-color: var(--moss); }
+.key[aria-pressed="false"] { opacity: .42; }
+.key[aria-pressed="false"] .dot { background: none !important; border-color: var(--moss); }
+
+.key .dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 1px solid rgba(0,0,0,.18);
+  flex: none;
+}
+
 /* ---------- basemap switch ---------- */
 
 #bases {
@@ -561,6 +610,7 @@ html, body {
   </div>
 
   <div id="scroll">
+    <div id="legend"></div>
     <div id="panel-rivers"></div>
     <div id="groups"></div>
     <div id="none" hidden>Nothing matches that search.</div>
@@ -628,55 +678,54 @@ const BASES = [
                color, width, dash, on, label, fields
    =========================================================================== */
 
+/* Colour encodes hatchery influence and is shared by every layer, so a
+   heavily influenced reach looks the same whichever species you're viewing.
+   Species is told apart by dash pattern. Regenerate all of this with
+   export_gdb.py, which reads the real values out of the geodatabase. */
+
+const SYMBOL_FIELD = "As_Is";
+
+const CLASSES = [
+  { value: "Wild",       label: "Wild",       color: "#0f4d3a" },
+  { value: "Hatchery",   label: "Hatchery",   color: "#c2571f" },
+  { value: "Non-Native", label: "Non-Native", color: "#6d4b93" },
+];
+const UNKNOWN_COLOR = "#9aa89f";
+
 const GROUPS = [
   {
-    id: 'fish', name: 'Where the fish are', sub: 'Distribution and life stage',
+    id: "salmon", name: "Salmon", sub: "Chinook, coho and chum",
     layers: [
-      { id: 'steelhead_w', name: 'Winter steelhead spawning', note: 'ODFW distribution, 2023', color: '#0f4d3a', width: 2.6, on: true },
-      { id: 'chinook_s',   name: 'Spring Chinook holding',    note: 'Surveyed pools and runs',  color: '#1c6b4f', width: 2.4, on: true },
-      { id: 'coho',        name: 'Coho rearing',              note: 'Juvenile use, all years',  color: '#2f8a68', width: 2.2, on: true },
-      { id: 'lamprey',     name: 'Pacific lamprey',           note: 'Observed and inferred',    color: '#4da585', width: 2.0, dash: [4, 1.6] },
-      { id: 'cutthroat',   name: 'Coastal cutthroat',         note: 'Resident and sea-run',     color: '#7cbfa5', width: 2.0 }
+      { id: "spring_chinook", name: "Spring Chinook", note: "", width: 2.6, dash: [8, 2, 1.5, 2], on: true, url: "./data/spring_chinook.geojson" },
+      { id: "fall_chinook",   name: "Fall Chinook",   note: "", width: 2.6, dash: [1.5, 1.8],     on: true, url: "./data/fall_chinook.geojson" },
+      { id: "coho",           name: "Coho",           note: "", width: 2.6, dash: [3, 1.5],       on: true, url: "./data/coho.geojson" },
+      { id: "chum",           name: "Chum",           note: "", width: 2.6, dash: [10, 2.5],      on: true, url: "./data/chum.geojson" },
     ]
   },
   {
-    id: 'block', name: "What's in the way", sub: 'Barriers and passage',
+    id: "trout", name: "Steelhead", sub: "Winter and summer run",
     layers: [
-      { id: 'culv_full', name: 'Complete passage barriers', note: 'Blocked at every flow',   color: '#8f2f14', width: 2.8 },
-      { id: 'culv_part', name: 'Partial passage barriers',  note: 'Passable at some flows',  color: '#b8442a', width: 2.4, dash: [3, 1.5] },
-      { id: 'dams',      name: 'Dams and diversions',       note: 'Includes push-up dams',   color: '#cf6a3f', width: 2.6 },
-      { id: 'ladders',   name: 'Ladders and screens',       note: 'Condition rated 2024',    color: '#e09a68', width: 2.2 }
+      { id: "winter_steelhead", name: "Winter Steelhead", note: "", width: 2.6,                on: true, url: "./data/winter_steelhead.geojson" },
+      { id: "summer_steelhead", name: "Summer Steelhead", note: "", width: 2.6, dash: [5, 2],  on: true, url: "./data/summer_steelhead.geojson" },
     ]
   },
-  {
-    id: 'mend', name: "What we're putting back", sub: 'Restoration and protection',
-    layers: [
-      { id: 'wood',       name: 'Large wood placements',   note: 'Completed projects',          color: '#17456e', width: 2.6 },
-      { id: 'riparian',   name: 'Riparian plantings',      note: 'Year 1 through year 10',      color: '#2b6f9e', width: 2.4 },
-      { id: 'floodplain', name: 'Floodplain reconnection', note: 'Levee setbacks and breaches', color: '#4f9cc4', width: 2.6 },
-      { id: 'sidechan',   name: 'Side channels reopened',  note: 'Constructed and restored',    color: '#86c1de', width: 2.2, dash: [4, 1.6] }
-    ]
-  },
-  {
-    id: 'water', name: 'How the water is doing', sub: 'Temperature and quality',
-    layers: [
-      { id: 'temp303d', name: 'Temperature-listed (303d)',  note: 'DEQ integrated report',     color: '#4a3168', width: 2.6 },
-      { id: 'sevenday', name: 'Summer 7DADM over 18 \u00b0C', note: 'Modelled, 2015 to 2024',  color: '#6d4b93', width: 2.4 },
-      { id: 'do',       name: 'Dissolved oxygen concerns',  note: 'Rearing and spawning',      color: '#9074b6', width: 2.2 },
-      { id: 'turb',     name: 'Turbidity monitoring',       note: 'Continuous sondes',         color: '#b39fd2', width: 2.0, dash: [3, 1.5] }
-    ]
-  },
-  {
-    id: 'people', name: 'Who is watching over it', sub: 'Stewardship and access',
-    layers: [
-      { id: 'homewaters', name: 'River Steward homewaters', note: 'Adopted reaches',      color: '#4f3608', width: 3.0 },
-      { id: 'access',     name: 'Public access',           note: 'Bank and boat',        color: '#6b4a12', width: 2.4 },
-      { id: 'creel',      name: 'Angler survey segments',  note: 'Creel census strata',  color: '#8f6c25', width: 2.2 },
-      { id: 'gauges',     name: 'Gauged reaches',          note: 'USGS and OWRD',        color: '#b18f45', width: 2.2 },
-      { id: 'corridors',  name: 'Priority corridors',      note: 'Ranked 2025',          color: '#d0b26f', width: 2.6, dash: [5, 2] }
-    ]
-  }
 ];
+
+/* Which As_Is classes are currently showing. */
+const activeClasses = new Set(CLASSES.map(c => c.value));
+
+const colorExpr = ["match", ["get", SYMBOL_FIELD],
+  ...CLASSES.flatMap(c => [c.value, c.color]), UNKNOWN_COLOR];
+
+function classFilter() {
+  if (activeClasses.size === CLASSES.length) return null;
+  return ["in", ["get", SYMBOL_FIELD], ["literal", [...activeClasses]]];
+}
+
+function colorOf(props) {
+  const hit = CLASSES.find(c => c.value === props[SYMBOL_FIELD]);
+  return hit ? hit.color : UNKNOWN_COLOR;
+}
 
 const LAYERS = GROUPS.flatMap((g, gi) =>
   g.layers.map((l, li) => Object.assign(l, {
@@ -716,6 +765,7 @@ map.addControl(new maplibregl.ScaleControl({ unit: 'imperial' }), 'bottom-left')
 map.on('load', () => {
   LAYERS.forEach(add);
   LAYERS.forEach(bind);
+  buildLegend();
   buildPanel();
   buildBases();
   buildRivers();
@@ -727,6 +777,7 @@ map.on('load', () => {
 map.on('styledata', () => {
   if (!ready || !map.isStyleLoaded() || map.getSource('s-' + LAYERS[0].id)) return;
   LAYERS.forEach(add);
+  applyClassFilter();
   sync();
 });
 
@@ -743,12 +794,16 @@ function add(cfg) {
     layout: { 'line-cap': 'round', 'line-join': 'round', visibility: visible.has(cfg.id) ? 'visible' : 'none' }
   };
 
+  const flt = classFilter();
+
   map.addLayer({ ...shared, id: 'h-' + cfg.id, type: 'line',
-    paint: { 'line-width': 18, 'line-opacity': 0, 'line-color': cfg.color } });
+    ...(flt ? { filter: flt } : {}),
+    paint: { 'line-width': 18, 'line-opacity': 0, 'line-color': '#000' } });
 
   map.addLayer({ ...shared, id: 'l-' + cfg.id, type: 'line',
+    ...(flt ? { filter: flt } : {}),
     paint: {
-      'line-color': cfg.color,
+      'line-color': colorExpr,
       'line-width': ['case', ['boolean', ['feature-state', 'hover'], false], cfg.width + 2.5, cfg.width],
       ...(cfg.dash ? { 'line-dasharray': cfg.dash } : {})
     } });
@@ -786,7 +841,7 @@ function pop(cfg, p) {
   const rows = keys
     .filter(k => p[k] !== undefined && p[k] !== null && p[k] !== '')
     .map(k => `<dt>${esc(nice(k))}</dt><dd>${esc(p[k])}</dd>`).join('');
-  return `<div class="ph" style="background:${cfg.color}">
+  return `<div class="ph" style="background:${colorOf(p)}">
             <b>${esc(p[cfg.label || 'name'] || cfg.name)}</b><i>${esc(cfg.name)}</i>
           </div>
           <div class="pb"><dl class="pr">${rows}</dl></div>`;
@@ -847,6 +902,43 @@ function buildPanel() {
   });
 }
 
+function buildLegend() {
+  const host = document.getElementById('legend');
+  host.innerHTML = `<div class="head cond">What's in the reach
+    <span>Colour shows ${SYMBOL_FIELD}; dash shows species</span></div>`;
+
+  const keys = document.createElement('div');
+  keys.className = 'keys';
+
+  CLASSES.forEach(c => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'key';
+    b.setAttribute('aria-pressed', 'true');
+    b.innerHTML = `<span class="dot" style="background:${c.color}"></span>${esc(c.label)}`;
+    b.addEventListener('click', () => {
+      activeClasses.has(c.value) ? activeClasses.delete(c.value) : activeClasses.add(c.value);
+      if (!activeClasses.size) CLASSES.forEach(x => activeClasses.add(x.value)); // never blank
+      applyClassFilter();
+    });
+    keys.appendChild(b);
+  });
+
+  host.appendChild(keys);
+  applyClassFilter();
+}
+
+function applyClassFilter() {
+  const flt = classFilter();
+  LAYERS.forEach(cfg => {
+    ['l-' + cfg.id, 'h-' + cfg.id].forEach(id => {
+      if (map.getLayer(id)) map.setFilter(id, flt);
+    });
+  });
+  document.querySelectorAll('.key').forEach((b, i) =>
+    b.setAttribute('aria-pressed', String(activeClasses.has(CLASSES[i].value))));
+}
+
 function rowFor(cfg) {
   const b = document.createElement('button');
   b.type = 'button';
@@ -857,8 +949,8 @@ function rowFor(cfg) {
   const dash = cfg.dash ? cfg.dash.map(n => (n * cfg.width).toFixed(1)).join(' ') : '';
   b.innerHTML = `
     <svg class="sw" width="38" height="8" viewBox="0 0 38 8" aria-hidden="true">
-      <line x1="1" y1="4" x2="37" y2="4" stroke="${cfg.color}" stroke-width="${cfg.width}"
-            stroke-linecap="round" ${dash ? `stroke-dasharray="${dash}"` : ''} />
+      <line x1="1" y1="4" x2="37" y2="4" stroke="var(--forest)" stroke-width="${cfg.width}"
+            stroke-linecap="butt" ${dash ? `stroke-dasharray="${dash}"` : ''} />
     </svg>
     <span><span class="nm">${esc(cfg.name)}</span>${cfg.note ? `<span class="nt">${esc(cfg.note)}</span>` : ''}</span>`;
 
@@ -1096,6 +1188,7 @@ function demo(seed, count) {
         river: names[Math.floor(r() * names.length)],
         run_timing: runs[Math.floor(r() * 4)],
         length_mi: (1 + r() * 11).toFixed(1),
+        [SYMBOL_FIELD]: CLASSES[Math.floor(r() * CLASSES.length)].value,
         condition: cond[Math.floor(r() * 4)],
         surveyed: 2019 + Math.floor(r() * 7)
       },
