@@ -695,19 +695,19 @@ const UNKNOWN_COLOR = "#9aa89f";
 
 const GROUPS = [
   {
-    id: "salmon", name: "Salmon", sub: "Chinook, coho and chum",
+    id: "trout", name: "Steelhead", sub: "Winter and summer run",
     layers: [
-      { id: "spring_chinook", name: "Spring Chinook", width: 2.6, dash: [8, 2, 1.5, 2], on: true, pmtiles: "./data/spring_chinook.pmtiles", sourceLayer: "spring_chinook", bounds: [-124.5, 42.0, -116.5, 46.3] },
-      { id: "fall_chinook",   name: "Fall Chinook",   width: 2.6, dash: [1.5, 1.8],     on: true, pmtiles: "./data/fall_chinook.pmtiles",   sourceLayer: "fall_chinook",   bounds: [-124.5, 42.0, -116.5, 46.3] },
-      { id: "coho",           name: "Coho",           width: 2.6, dash: [3, 1.5],       on: true, pmtiles: "./data/coho.pmtiles",           sourceLayer: "coho",           bounds: [-124.5, 42.0, -116.5, 46.3] },
-      { id: "chum",           name: "Chum",           width: 2.6, dash: [10, 2.5],      on: true, url: "./data/chum.geojson" },
+      { id: "winter_steelhead", name: "Winter Steelhead", note: "11,271 reaches", width: 2.6,               on: true, pmtiles: "./data/winter_steelhead.pmtiles", sourceLayer: "winter_steelhead", bounds: [-124.62, 41.92, -116.42, 46.30] },
+      { id: "summer_steelhead", name: "Summer Steelhead", note: "1,174 reaches",  width: 2.6, dash: [5, 2],           pmtiles: "./data/summer_steelhead.pmtiles", sourceLayer: "summer_steelhead", bounds: [-124.62, 41.92, -116.42, 46.30] },
     ]
   },
   {
-    id: "trout", name: "Steelhead", sub: "Winter and summer run",
+    id: "salmon", name: "Salmon", sub: "Chinook, coho and chum",
     layers: [
-      { id: "winter_steelhead", name: "Winter Steelhead", width: 2.6,               on: true, pmtiles: "./data/winter_steelhead.pmtiles", sourceLayer: "winter_steelhead", bounds: [-124.5, 42.0, -116.5, 46.3] },
-      { id: "summer_steelhead", name: "Summer Steelhead", width: 2.6, dash: [5, 2], on: true, pmtiles: "./data/summer_steelhead.pmtiles", sourceLayer: "summer_steelhead", bounds: [-124.5, 42.0, -116.5, 46.3] },
+      { id: "spring_chinook", name: "Spring Chinook", note: "741 reaches",    width: 2.6, dash: [8, 2, 1.5, 2], pmtiles: "./data/spring_chinook.pmtiles", sourceLayer: "spring_chinook", bounds: [-124.62, 41.92, -116.42, 46.30] },
+      { id: "fall_chinook",   name: "Fall Chinook",   note: "3,177 reaches",  width: 2.6, dash: [1.5, 1.8],     pmtiles: "./data/fall_chinook.pmtiles",   sourceLayer: "fall_chinook",   bounds: [-124.62, 41.92, -116.42, 46.30] },
+      { id: "coho",           name: "Coho",           note: "12,404 reaches", width: 2.6, dash: [3, 1.5],       pmtiles: "./data/coho.pmtiles",           sourceLayer: "coho",           bounds: [-124.62, 41.92, -116.42, 46.30] },
+      { id: "chum",           name: "Chum",           note: "354 reaches",    width: 2.6, dash: [10, 2.5],      pmtiles: "./data/chum.pmtiles",           sourceLayer: "chum",           bounds: [-124.62, 41.92, -116.42, 46.30] },
     ]
   },
 ];
@@ -728,11 +728,8 @@ function colorOf(props) {
   return hit ? hit.color : UNKNOWN_COLOR;
 }
 
-const LAYERS = GROUPS.flatMap((g, gi) =>
-  g.layers.map((l, li) => Object.assign(l, {
-    group: g.id,
-    data: (l.data || l.url || l.pmtiles) ? l.data : demo(gi * 100 + li, 4 + (li % 3))
-  }))
+const LAYERS = GROUPS.flatMap(g =>
+  g.layers.map(l => Object.assign(l, { group: g.id }))
 );
 
 const byId = Object.fromEntries(LAYERS.map(l => [l.id, l]));
@@ -1151,54 +1148,6 @@ function bbox(g) {
   return isFinite(a) ? [a, b, c, d] : null;
 }
 
-/* ===========================================================================
-   8.  DEMO GEOMETRY  —  delete once the real data is wired up
-   =========================================================================== */
-
-function demo(seed, count) {
-  const r = mulberry(seed + 7), out = [];
-  const runs = ['Winter', 'Spring', 'Summer', 'Fall'];
-  const cond = ['good', 'fair', 'degraded', 'unknown'];
-  const names = RIVERS.map(x => x.name);
-
-  for (let i = 0; i < count; i++) {
-    const x0 = OREGON[0] + 0.4 + r() * (OREGON[2] - OREGON[0] - 1.0);
-    const y0 = OREGON[1] + 0.3 + r() * (OREGON[3] - OREGON[1] - 0.8);
-    const co = [[x0, y0]];
-    let hx = (r() - .5) * .16, hy = (r() - .5) * .16;
-
-    for (let j = 0; j < 7 + Math.floor(r() * 5); j++) {
-      hx = hx * .72 + (r() - .5) * .1;
-      hy = hy * .72 + (r() - .5) * .1;
-      const p = co[co.length - 1];
-      co.push([p[0] + hx, p[1] + hy]);
-    }
-
-    out.push({
-      type: 'Feature',
-      properties: {
-        name: `Reach ${String.fromCharCode(65 + seed % 26)}-${100 + i}`,
-        river: names[Math.floor(r() * names.length)],
-        run_timing: runs[Math.floor(r() * 4)],
-        length_mi: (1 + r() * 11).toFixed(1),
-        [SYMBOL_FIELD]: CLASSES[Math.floor(r() * CLASSES.length)].value,
-        condition: cond[Math.floor(r() * 4)],
-        surveyed: 2019 + Math.floor(r() * 7)
-      },
-      geometry: { type: 'LineString', coordinates: co }
-    });
-  }
-  return { type: 'FeatureCollection', features: out };
-}
-
-function mulberry(a) {
-  return function () {
-    a |= 0; a = a + 0x6D2B79F5 | 0;
-    let t = Math.imul(a ^ a >>> 15, 1 | a);
-    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-    return ((t ^ t >>> 14) >>> 0) / 4294967296;
-  };
-}
 </script>
 </body>
 </html>
